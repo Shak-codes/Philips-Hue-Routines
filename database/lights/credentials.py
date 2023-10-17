@@ -1,0 +1,2 @@
+USERNAME = "xNcojGf6aQaRr7SRa5EeQEltubbeH9O2cHJYIPw6"
+IP = "10.0.0.66"
