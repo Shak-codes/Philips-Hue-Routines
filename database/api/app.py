@@ -1,11 +1,13 @@
-from flask import Flask, json, request
-from flask_caching import Cache
+from flask import Flask, request, jsonify
+import json
 from datetime import datetime
 import sqlite3
-import threading
+import requests
+from requests.auth import HTTPBasicAuth
+from light import Light
+from tokens import Tokens
 
-# Inject data
-# instance.execute("INSERT INTO day VALUES (20, 456, 200, 13)")
+from constants import PHUE_AUTH, DB_URL
 
 config = {
     "DEBUG": True,          # some Flask specific configs
@@ -15,18 +17,43 @@ config = {
 
 app = Flask(__name__)
 app.config.from_mapping(config)
-cache = Cache(app)
+
+Light1 = Light(1)
+Light2 = Light(3)
 
 
-@cache.memoize(86400)
-def set_light_on(light, color):
-    now = datetime.now()
-    return {
-        "date": now.strftime('%Y:%m:%d'),
-        "dow": now.strftime("%A"),
-        "start_time": now,
-        "color": color
-    }
+def get_response(response: str, status=200, mimetype='application.json'):
+    response = app.response_class(
+        response=response,
+        status=status,
+        mimetype=mimetype
+    )
+    return response
+
+
+@app.route("/listener")
+def generate_refresh_token():
+    code = request.args.get('code')
+    url = f"https://api.meethue.com/oauth2/token?code={code}&grant_type=authorization_code"
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    response = json.loads(requests.post(url, auth=PHUE_AUTH).text)
+    access_token = response['access_token']
+    refresh_token = response['refresh_token']
+    connection = sqlite3.connect(DB_URL)
+    instance = connection.cursor()
+    instance.execute('DELETE FROM tokens',)
+    instance.execute(
+        f"INSERT INTO tokens VALUES (?, ?, ?)",
+        (generated_at, access_token, refresh_token)
+    )
+    connection.commit()
+    connection.close()
+
+    Light1.tokens.pull_tokens()
+    Light2.tokens.pull_tokens()
+    Light1.pull_light_data()
+    Light2.pull_light_data()
+    return response
 
 
 @app.route("/create-table", methods=['POST'])
@@ -36,14 +63,10 @@ def create_table():
     table_columns = ""
     for key in columns:
         try:
-            assert (columns[key] in ['integer', 'text'])
+            assert (columns[key] in ['integer', 'text', 'real'])
         except:
-            response = app.response_class(
-                response=f"Table column '{key}' can only be of type 'text' or 'integer'. '{columns[key]}' is not allowed.",
-                status=409,
-                mimetype='application.json'
-            )
-            return response
+            message = f"Table column '{key}' can only be of type 'text' or 'integer'. '{columns[key]}' is not allowed."
+            return get_response(message, status=409)
         else:
             table_columns += f"{key} {columns[key]},\n"
     table_columns = table_columns[:-2]
@@ -57,79 +80,49 @@ def create_table():
         """
         )
     except:
-        response = app.response_class(
-            response=f"Table '{body['table_name']}' already exists.",
-            status=409,
-            mimetype='application.json'
-        )
-        return response
+        message = f"Table '{body['table_name']}' already exists."
+        return get_response(message, 409)
     else:
-        response = app.response_class(
-            response=f"Success! Table '{body['table_name']}' has been created!",
-            status=201,
-            mimetype='application.json'
-        )
-        return response
+        message = f"Success! Table '{body['table_name']}' has been created!"
+        return get_response(message, 201)
     finally:
         connection.close()
 
 
 @app.route("/lights/<id>/power-on", methods=['POST'])
 def power_on(id):
-    assert id == request.view_args['id']
-    body = request.json
-    color = body['color']
-    set_light_on(id, color)
-    response = app.response_class(
-        response=f"Success! Lamp {id} turned on at {set_light_on(id, color)['start_time']} with color: {color}",
-        status=201,
-        mimetype='application.json'
-    )
-    return response
+    light = Light1 if int(id) == 1 else Light2
+    light.set_light("on")
+    message = f"Success! Lamp {id} turned on at {light.turn_on_time} with brightness {light.brightness} and xy: {light.x}, {light.y}"
+    return get_response(message, 201)
 
 
 @app.route("/lights/<id>/power-off", methods=['POST'])
 def power_off(id):
     assert id == request.view_args['id']
-    now = datetime.now()
-    color = request.args.get('color')
-    data = set_light_on(id, color)
-    difference = now - data['start_time']
-    difference = difference.total_seconds()
-    if difference == 0:
-        cache.delete_memoized(set_light_on, id)
-        response = app.response_class(
-            response=f"Failed! Lamp {id} with color({color}) does not exist or was never on in the first place.",
-            status=409,
-            mimetype='application.json'
-        )
-        return response
-    cache.delete_memoized(set_light_on, id, color)
-    connection = sqlite3.connect('../smarthome.db')
-    instance = connection.cursor()
-    instance.execute(
-        f"INSERT INTO lights VALUES (?, ?, ?, ?, ?, ?)",
-        (id, data['date'], data['dow'], data['start_time'].strftime('%H:%M:%S'), now.strftime('%H:%M:%S'), color))
-    connection.commit()
-    response = app.response_class(
-        response=f"Success! The lamp was turned on at {data['start_time'].strftime('%H:%M:%S')} and turned off at {now.strftime('%H:%M:%S')}."
-        f"The lamp was on for {round(divmod(difference, 60)[0])} minutes and {round(divmod(difference, 60)[1])} seconds.",
-        status=201,
-        mimetype='application.json'
-    )
-    connection.close()
-    return response
+    print("ID IS VALID")
+    light = Light1 if int(id) == 1 else Light2
+    print(f"Attempting to turn off light {id}")
+    light.set_light("off")
+    time_active = (light.turn_off_info - light.turn_on_info).total_seconds()
+    message = f'''Success! The lamp was turned on at {light.turn_on_time} and turned off at {light.turn_off_time}.
+    The lamp was on for {round(divmod(time_active, 60)[0])} minutes and {round(divmod(time_active, 60)[1])} seconds.'''
+    return get_response(message, 201)
 
 
-@app.route("/lights", methods=['GET'])
-def get_light_data():
+@app.route("/db/lights", methods=['GET'])
+def get_dblight_data():
     connection = sqlite3.connect('../smarthome.db')
     instance = connection.cursor()
     instance.execute("SELECT * FROM lights")
-    response = app.response_class(
-        response=f"{instance.fetchall()}",
-        status=200,
-        mimetype='application.json'
-    )
+    message = f"{instance.fetchall()}"
     connection.close()
-    return response
+    return get_response(message, 200)
+
+
+@app.route("/lights/state", methods=["GET"])
+def curr_light_state():
+    state = []
+    state.append(Light1.get_light_data())
+    state.append(Light2.get_light_data())
+    return jsonify(state)
