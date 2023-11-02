@@ -3,7 +3,7 @@ from datetime import datetime
 import requests
 import json
 
-from constants import PHUE_AUTH, PHUE_REFRESH_ACCESS_TOKEN_AUTH, PHUE_REFRESH_ACCESS_TOKEN_URL, DB_URL
+from constants import PHUE_AUTH, PHUE_REFRESH_ACCESS_TOKEN_AUTH, PHUE_REFRESH_ACCESS_TOKEN_URL, DB_URL, SQL, Tables
 
 
 def valid_access_token(generated_at, now) -> bool:
@@ -20,7 +20,7 @@ class Tokens:
         connection = sqlite3.connect('../smarthome.db')
         instance = connection.cursor()
         try:
-            instance.execute("SELECT * FROM tokens")
+            instance.execute(f"{SQL.SELECT_ALL.value} {Tables.TOKENS.value}")
             entry = instance.fetchone()
             self.generated_at = entry[0]
             self.access_token = entry[1]
@@ -34,7 +34,7 @@ class Tokens:
     def pull_tokens(self) -> None:
         connection = sqlite3.connect('../smarthome.db')
         instance = connection.cursor()
-        instance.execute("SELECT * FROM tokens")
+        instance.execute(f"{SQL.SELECT_ALL.value} {Tables.TOKENS.value}")
         entry = instance.fetchone()
         self.generated_at = entry[0]
         self.access_token = entry[1]
@@ -55,9 +55,9 @@ class Tokens:
         self.refresh_token = response['refresh_token']
         connection = sqlite3.connect(DB_URL)
         instance = connection.cursor()
-        instance.execute('DELETE FROM tokens',)
+        instance.execute('DELETE FROM TOKENS',)
         instance.execute(
-            f"INSERT INTO tokens VALUES (?, ?, ?)",
+            f"INSERT INTO TOKENS VALUES (?, ?, ?)",
             (self.generated_at, self.access_token, self.refresh_token)
         )
         connection.commit()

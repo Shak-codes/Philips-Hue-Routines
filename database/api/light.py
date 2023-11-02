@@ -1,6 +1,5 @@
 from datetime import datetime
-from constants import PHUE_LIGHTS_URL
-from constants import DB_URL
+from constants import PHUE_LIGHTS_URL, DB_URL, Tables, SQL
 import requests
 import json
 import sqlite3
@@ -47,7 +46,7 @@ class Light:
         connection = sqlite3.connect(DB_URL)
         instance = connection.cursor()
         instance.execute(
-            f"INSERT INTO lights VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            f"{SQL.INSERT.value} {Tables.LIGHT.value} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (self.id, self.name, self.turn_on_date, self.turn_on_dow, self.turn_on_time,
                 self.turn_off_date, self.turn_off_dow, self.turn_off_time, self.brightness,
                 self.x, self.y))

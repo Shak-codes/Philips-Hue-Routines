@@ -3,11 +3,9 @@ import json
 from datetime import datetime
 import sqlite3
 import requests
-from requests.auth import HTTPBasicAuth
 from light import Light
-from tokens import Tokens
 
-from constants import PHUE_AUTH, DB_URL
+from constants import PHUE_AUTH, DB_URL, Tables, Params, SQL
 
 config = {
     "DEBUG": True,          # some Flask specific configs
@@ -33,17 +31,17 @@ def get_response(response: str, status=200, mimetype='application.json'):
 
 @app.route("/listener")
 def generate_refresh_token():
-    code = request.args.get('code')
+    code = request.args.get(Params.CODE.value)
     url = f"https://api.meethue.com/oauth2/token?code={code}&grant_type=authorization_code"
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     response = json.loads(requests.post(url, auth=PHUE_AUTH).text)
-    access_token = response['access_token']
-    refresh_token = response['refresh_token']
+    access_token = response[Params.ACCESS_TOKEN.value]
+    refresh_token = response[Params.REFRESH_TOKEN.value]
     connection = sqlite3.connect(DB_URL)
     instance = connection.cursor()
-    instance.execute('DELETE FROM tokens',)
+    instance.execute(f"{SQL.DELETE.value} {Tables.TOKENS.value}",)
     instance.execute(
-        f"INSERT INTO tokens VALUES (?, ?, ?)",
+        f"{SQL.INSERT.value} {Tables.TOKENS.value} VALUES (?, ?, ?)",
         (generated_at, access_token, refresh_token)
     )
     connection.commit()
@@ -59,13 +57,13 @@ def generate_refresh_token():
 @app.route("/create-table", methods=['POST'])
 def create_table():
     body = request.json
-    columns = body['columns']
+    columns = body[Params.COLUMNS.value]
     table_columns = ""
     for key in columns:
         try:
-            assert (columns[key] in ['integer', 'text', 'real'])
+            assert (columns[key] in Tables.COLUMN_TYPES.value)
         except:
-            message = f"Table column '{key}' can only be of type 'text' or 'integer'. '{columns[key]}' is not allowed."
+            message = f"Table column '{key}' can only be of type 'text', 'real' or 'integer'. '{columns[key]}' is not allowed."
             return get_response(message, status=409)
         else:
             table_columns += f"{key} {columns[key]},\n"
@@ -74,7 +72,7 @@ def create_table():
         connection = sqlite3.connect('../smarthome.db')
         instance = connection.cursor()
         instance.execute(
-            f"""CREATE TABLE {body['table_name']} (
+            f"""{SQL.CREATE.value} {body['table_name']} (
                 {table_columns}
             )
         """
@@ -99,7 +97,7 @@ def power_on(id):
 
 @app.route("/lights/<id>/power-off", methods=['POST'])
 def power_off(id):
-    assert id == request.view_args['id']
+    assert id == request.view_args[Params.ID.value]
     print("ID IS VALID")
     light = Light1 if int(id) == 1 else Light2
     print(f"Attempting to turn off light {id}")
@@ -114,7 +112,7 @@ def power_off(id):
 def get_dblight_data():
     connection = sqlite3.connect('../smarthome.db')
     instance = connection.cursor()
-    instance.execute("SELECT * FROM lights")
+    instance.execute(f"{SQL.SELECT_ALL.value} {Tables.LIGHT.value}")
     message = f"{instance.fetchall()}"
     connection.close()
     return get_response(message, 200)
