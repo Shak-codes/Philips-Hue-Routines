@@ -1,14 +1,14 @@
 from datetime import datetime
-from constants import PHUE_LIGHTS_URL, DB_URL, Tables, SQL
+from constants import DB_URL, Tables, SQL, PHUE
 import requests
 import json
 import sqlite3
 
-from tokens import Tokens
+from lights.tokens import tokens
 
 
 class Light:
-    tokens = Tokens()
+    tokens = tokens.Tokens()
     HEADERS = {"Content-Type": "application/json"}
 
     def __init__(self, id: int):
@@ -18,7 +18,7 @@ class Light:
                 "Authorization": f"Bearer {self.tokens.get_access_token()}"}
             print(self.HEADERS)
             response = requests.get(
-                f"{PHUE_LIGHTS_URL}/{id}", headers=HEADERS)
+                f"{PHUE.LIGHTS_URL.value}/{id}", headers=HEADERS)
             response = json.loads(response.text)
             self.name = response['name']
             self.state = response['state']['on']
@@ -33,7 +33,7 @@ class Light:
         HEADERS = {"Authorization": f"Bearer {self.tokens.get_access_token()}"}
         print(HEADERS)
         response = json.loads(requests.get(
-            f"{PHUE_LIGHTS_URL}/{self.id}", headers=HEADERS).text)
+            f"{PHUE.LIGHTS_URL.value}/{self.id}", headers=HEADERS).text)
         print(response)
         self.name = response['name']
         self.state = response['state']['on']
@@ -75,7 +75,7 @@ class Light:
             raw = '{"on": true}' if state == "on" else '{"on": false}'
             self.HEADERS['Authorization'] = f"Bearer {self.tokens.get_access_token()}"
             requests.put(
-                f"{PHUE_LIGHTS_URL}/{self.id}/state",
+                f"{PHUE.LIGHTS_URL.value}/{self.id}/state",
                 headers=self.HEADERS,
                 data=raw
             )

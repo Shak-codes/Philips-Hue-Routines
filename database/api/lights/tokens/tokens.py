@@ -3,7 +3,7 @@ from datetime import datetime
 import requests
 import json
 
-from constants import PHUE_AUTH, PHUE_REFRESH_ACCESS_TOKEN_AUTH, PHUE_REFRESH_ACCESS_TOKEN_URL, DB_URL, SQL, Tables
+from constants import PHUE, DB_URL, SQL, Tables
 
 
 def valid_access_token(generated_at, now) -> bool:
@@ -17,6 +17,9 @@ def valid_access_token(generated_at, now) -> bool:
 
 class Tokens:
     def __init__(self) -> None:
+        self.pull_tokens()
+
+    def pull_tokens(self) -> None:
         connection = sqlite3.connect('../smarthome.db')
         instance = connection.cursor()
         try:
@@ -31,23 +34,12 @@ class Tokens:
         finally:
             connection.close()
 
-    def pull_tokens(self) -> None:
-        connection = sqlite3.connect('../smarthome.db')
-        instance = connection.cursor()
-        instance.execute(f"{SQL.SELECT_ALL.value} {Tables.TOKENS.value}")
-        entry = instance.fetchone()
-        self.generated_at = entry[0]
-        self.access_token = entry[1]
-        self.refresh_token = entry[2]
-        connection.close()
-        print("Tokens have been pulled!")
-
     def refresh_access_token(self) -> None:
         data = {"refresh_token": self.refresh_token}
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        response = requests.post(PHUE_REFRESH_ACCESS_TOKEN_URL,
-                                 auth=PHUE_AUTH,
-                                 headers=PHUE_REFRESH_ACCESS_TOKEN_AUTH,
+        response = requests.post(PHUE.REFRESH_ACCESS_TOKEN_URL.value,
+                                 auth=PHUE.AUTH.value,
+                                 headers=PHUE.REFRESH_ACCESS_TOKEN_AUTH.value,
                                  data=data)
         response = json.loads(response.text)
         self.generated_at = generated_at

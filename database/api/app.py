@@ -1,11 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 import json
 from datetime import datetime
 import sqlite3
 import requests
-from light import Light
+from lights import light
 
-from constants import PHUE_AUTH, DB_URL, Tables, Params, SQL
+from constants import DB_URL, Tables, Params, SQL, PHUE
 
 config = {
     "DEBUG": True,          # some Flask specific configs
@@ -16,8 +16,8 @@ config = {
 app = Flask(__name__)
 app.config.from_mapping(config)
 
-Light1 = Light(1)
-Light2 = Light(3)
+Light1 = light.Light(1)
+Light2 = light.Light(3)
 
 
 def get_response(response: str, status=200, mimetype='application.json'):
@@ -34,7 +34,7 @@ def generate_refresh_token():
     code = request.args.get(Params.CODE.value)
     url = f"https://api.meethue.com/oauth2/token?code={code}&grant_type=authorization_code"
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    response = json.loads(requests.post(url, auth=PHUE_AUTH).text)
+    response = json.loads(requests.post(url, auth=PHUE.AUTH.value).text)
     access_token = response[Params.ACCESS_TOKEN.value]
     refresh_token = response[Params.REFRESH_TOKEN.value]
     connection = sqlite3.connect(DB_URL)
@@ -98,9 +98,7 @@ def power_on(id):
 @app.route("/lights/<id>/power-off", methods=['POST'])
 def power_off(id):
     assert id == request.view_args[Params.ID.value]
-    print("ID IS VALID")
     light = Light1 if int(id) == 1 else Light2
-    print(f"Attempting to turn off light {id}")
     light.set_light("off")
     time_active = (light.turn_off_info - light.turn_on_info).total_seconds()
     message = f'''Success! The lamp was turned on at {light.turn_on_time} and turned off at {light.turn_off_time}.
@@ -123,4 +121,4 @@ def curr_light_state():
     state = []
     state.append(Light1.get_light_data())
     state.append(Light2.get_light_data())
-    return jsonify(state)
+    return state
