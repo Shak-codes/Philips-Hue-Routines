@@ -59,7 +59,7 @@ class Light:
         self.turn_on_dow = now.strftime('%A')
         self.turn_on_time = now.strftime('%H:%M:%S')
         self.turn_on_info = now
-        print(f"Light {self.id} has been turned on!")
+        return f"Light {self.id} has been turned on!", 200
 
     def set_light_off(self, now):
         self.turn_off_date = now.strftime('%Y-%m-%d')
@@ -67,34 +67,31 @@ class Light:
         self.turn_off_time = now.strftime('%H:%M:%S')
         self.turn_off_info = now
         self.store_light_data()
-        print(f"Light {self.id} has been turned off!")
+        return f"Light {self.id} has been turned off!", 200
 
     def set_light(self, state: str):
-        if self.tokens.get_access_token():
-            assert state != self.state
-            raw = '{"on": true}' if state == "on" else '{"on": false}'
-            self.HEADERS['Authorization'] = f"Bearer {self.tokens.get_access_token()}"
-            requests.put(
-                f"{PHUE.LIGHTS_URL.value}/{self.id}/state",
-                headers=self.HEADERS,
-                data=raw
-            )
-            self.state = state
-            if self.state == "on":
-                self.set_light_on(datetime.now())
-            else:
-                self.set_light_off(datetime.now())
-        else:
-            print("Light cannot be set. Please generate an access token!")
+        if not self.tokens.get_access_token():
+            return "Light cannot be turned on. Please generate the tokens.", 403
+        assert state != self.state
+        raw = '{"on": true}' if state == "on" else '{"on": false}'
+        self.HEADERS['Authorization'] = f"Bearer {self.tokens.get_access_token()}"
+        requests.put(
+            f"{PHUE.LIGHTS_URL.value}/{self.id}/state",
+            headers=self.HEADERS,
+            data=raw
+        )
+        self.state = state
+        return self.set_light_on(datetime.now()) if self.state == "on" else\
+            self.set_light_off(datetime.now())
 
     def get_light_data(self):
-        if self.tokens.get_access_token():
-            return {
-                "id": self.id,
-                "name": self.name,
-                "state": self.state,
-                "brightness": self.brightness,
-                "x": self.x,
-                "y": self.y
-            }
-        return "Cannot get light data. Please generate an access token!"
+        if not self.tokens.get_access_token():
+            return "Cannot get light data. Please generate an access token!", 403
+        return {
+            "id": self.id,
+            "name": self.name,
+            "state": self.state,
+            "brightness": self.brightness,
+            "x": self.x,
+            "y": self.y
+        }, 200

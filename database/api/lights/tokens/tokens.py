@@ -28,7 +28,6 @@ class Tokens:
             self.generated_at = entry[0]
             self.access_token = entry[1]
             self.refresh_token = entry[2]
-            print("Tokens have been set in Class initialization!")
         except:
             print("Tokens cannot be obtained. Please generate the tokens!")
         finally:

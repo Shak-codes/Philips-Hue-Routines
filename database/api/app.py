@@ -6,27 +6,13 @@ import requests
 from lights import light
 
 from constants import DB_URL, Tables, Params, SQL, PHUE
+from sqlite import sqlite
 
-config = {
-    "DEBUG": True,          # some Flask specific configs
-    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
-    "CACHE_DEFAULT_TIMEOUT": 86400
-}
 
 app = Flask(__name__)
-app.config.from_mapping(config)
 
 Light1 = light.Light(1)
 Light2 = light.Light(3)
-
-
-def get_response(response: str, status=200, mimetype='application.json'):
-    response = app.response_class(
-        response=response,
-        status=status,
-        mimetype=mimetype
-    )
-    return response
 
 
 @app.route("/listener")
@@ -37,21 +23,21 @@ def generate_refresh_token():
     response = json.loads(requests.post(url, auth=PHUE.AUTH.value).text)
     access_token = response[Params.ACCESS_TOKEN.value]
     refresh_token = response[Params.REFRESH_TOKEN.value]
-    connection = sqlite3.connect(DB_URL)
-    instance = connection.cursor()
-    instance.execute(f"{SQL.DELETE.value} {Tables.TOKENS.value}",)
-    instance.execute(
-        f"{SQL.INSERT.value} {Tables.TOKENS.value} VALUES (?, ?, ?)",
-        (generated_at, access_token, refresh_token)
-    )
-    connection.commit()
-    connection.close()
-
+    c = sqlite.SQLite()
+    response, code = c.delete_all(Tables.TOKENS.value)
+    if code == 409:
+        c.close_conn()
+        return response
+    response, code = c.insert(
+        Tables.TOKENS.value, (generated_at, access_token, refresh_token))
+    if code == 409:
+        c.close_conn()
+        return response
     Light1.tokens.pull_tokens()
     Light2.tokens.pull_tokens()
     Light1.pull_light_data()
     Light2.pull_light_data()
-    return response
+    return "Success! Tokens have been generated!", 201
 
 
 @app.route("/create-table", methods=['POST'])
@@ -64,56 +50,46 @@ def create_table():
             assert (columns[key] in Tables.COLUMN_TYPES.value)
         except:
             message = f"Table column '{key}' can only be of type 'text', 'real' or 'integer'. '{columns[key]}' is not allowed."
-            return get_response(message, status=409)
+            return message, 409
         else:
             table_columns += f"{key} {columns[key]},\n"
     table_columns = table_columns[:-2]
-    try:
-        connection = sqlite3.connect('../smarthome.db')
-        instance = connection.cursor()
-        instance.execute(
-            f"""{SQL.CREATE.value} {body['table_name']} (
-                {table_columns}
-            )
-        """
-        )
-    except:
-        message = f"Table '{body['table_name']}' already exists."
-        return get_response(message, 409)
-    else:
-        message = f"Success! Table '{body['table_name']}' has been created!"
-        return get_response(message, 201)
-    finally:
-        connection.close()
+    c = sqlite.SQLite()
+    response = c.create_table(body['table_name'], table_columns)
+    c.close_conn()
+    return response
 
 
 @app.route("/lights/<id>/power-on", methods=['POST'])
 def power_on(id):
     light = Light1 if int(id) == 1 else Light2
-    light.set_light("on")
-    message = f"Success! Lamp {id} turned on at {light.turn_on_time} with brightness {light.brightness} and xy: {light.x}, {light.y}"
-    return get_response(message, 201)
+    response, code = light.set_light("on")
+    if code == 403:
+        return response, code
+    response = f"Success! Lamp {id} turned on at {light.turn_on_time} with brightness {light.brightness} and xy: {light.x}, {light.y}"
+    return response, 200
 
 
 @app.route("/lights/<id>/power-off", methods=['POST'])
 def power_off(id):
     assert id == request.view_args[Params.ID.value]
     light = Light1 if int(id) == 1 else Light2
-    light.set_light("off")
+    response, code = light.set_light("off")
+    if code == 403:
+        return response, code
     time_active = (light.turn_off_info - light.turn_on_info).total_seconds()
     message = f'''Success! The lamp was turned on at {light.turn_on_time} and turned off at {light.turn_off_time}.
     The lamp was on for {round(divmod(time_active, 60)[0])} minutes and {round(divmod(time_active, 60)[1])} seconds.'''
-    return get_response(message, 201)
+    return message, 201
 
 
-@app.route("/db/lights", methods=['GET'])
-def get_dblight_data():
-    connection = sqlite3.connect('../smarthome.db')
-    instance = connection.cursor()
-    instance.execute(f"{SQL.SELECT_ALL.value} {Tables.LIGHT.value}")
-    message = f"{instance.fetchall()}"
-    connection.close()
-    return get_response(message, 200)
+@app.route("/db/<table>", methods=['GET'])
+def get_dblight_data(table):
+    assert table == request.view_args['table']
+    c = sqlite.SQLite()
+    response = c.get_all(table)
+    c.close_conn()
+    return response, 200
 
 
 @app.route("/lights/state", methods=["GET"])
