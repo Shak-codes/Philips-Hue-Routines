@@ -2,12 +2,9 @@ import sqlite3
 from constants import SQL
 
 
-def insert_statement(table, count):
-    params = "("
-    for i in range(1, count):
-        params += "?, "
-    params += ")"
-    return f"{SQL.INSERT.value} {table} VALUES {params}",
+def insert_statement(table, values):
+    params = "(".join(["?, " for i in range(1, len(values))], "?)")
+    return f"{SQL.INSERT.value} {table} VALUES {params}"
 
 
 class SQLite:
@@ -31,6 +28,7 @@ class SQLite:
                     {columns}
                 )"""
             )
+            self.conn.commit()
         except:
             return f"Table '{name}' already exists.", 409
         else:
@@ -41,31 +39,29 @@ class SQLite:
         c = self.conn.cursor()
         try:
             c.execute(
-                f"{insert_statement(name, len(values))}",
+                f"{insert_statement(name, values)}",
                 values
             )
-            c.commit()
+            self.conn.commit()
         except:
             return f"Table '{name}' does not exist. Cannot insert data.", 409
         else:
             return f"Success! Data inserted into table '{name}'!", 201
 
     def delete_all(self, name) -> (str, int):
-        conn = sqlite3.connect(self.db)
-        c = conn.cursor()
+        self.check_conn()
+        c = self.conn.cursor()
         try:
-            c.execute(
-                f"{SQL.DELETE.value} {name}",
-            )
-            c.commit()
+            c.execute(f"{SQL.DELETE.value} {name}")
+            self.conn.commit()
         except:
             return f"Table '{name}' does not exist. Cannot delete a non-existing table's data.", 409
         else:
             return f"Success! Table {name}'s data has been deleted.", 201
 
     def get_all(self, name) -> (str, int):
-        conn = sqlite3.connect(self.db)
-        c = conn.cursor()
+        self.check_conn()
+        c = self.conn.cursor()
         try:
             c.execute(f"{SQL.SELECT_ALL.value} {name}")
         except:

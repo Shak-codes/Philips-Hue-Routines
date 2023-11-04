@@ -1,9 +1,9 @@
 from datetime import datetime
-from constants import DB_URL, Tables, SQL, PHUE
+from constants import Tables, PHUE
 import requests
 import json
-import sqlite3
 
+from sqlite import sqlite
 from lights.tokens import tokens
 
 
@@ -43,43 +43,42 @@ class Light:
         print("Light data has been pulled!")
 
     def store_light_data(self):
-        connection = sqlite3.connect(DB_URL)
-        instance = connection.cursor()
-        instance.execute(
-            f"{SQL.INSERT.value} {Tables.LIGHT.value} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (self.id, self.name, self.turn_on_date, self.turn_on_dow, self.turn_on_time,
-                self.turn_off_date, self.turn_off_dow, self.turn_off_time, self.brightness,
-                self.x, self.y))
+        values = (self.id, self.name, self.turn_on_date, self.turn_on_dow, self.turn_on_time,
+                  self.turn_off_date, self.turn_off_dow, self.turn_off_time, self.brightness,
+                  self.x, self.y)
+        c = sqlite.SQLite()
+        response, code = c.insert(Tables.LIGHT.value, values)
+        c.close_conn()
         # TODO: ACCOUNT FOR LIGHT BEING TURNED ON, PROGRAM CRASHING, THEN TURNING LIGHT OFF
-        connection.commit()
-        connection.close()
+        return response, code
 
     def set_light_on(self, now):
         self.turn_on_date = now.strftime('%Y-%m-%d')
         self.turn_on_dow = now.strftime('%A')
         self.turn_on_time = now.strftime('%H:%M:%S')
         self.turn_on_info = now
-        return f"Light {self.id} has been turned on!", 200
+        return f"Light {self.id} has been turned on at {self.turn_on_time}!", 200
 
     def set_light_off(self, now):
         self.turn_off_date = now.strftime('%Y-%m-%d')
         self.turn_off_dow = now.strftime('%A')
         self.turn_off_time = now.strftime('%H:%M:%S')
         self.turn_off_info = now
-        self.store_light_data()
-        return f"Light {self.id} has been turned off!", 200
+        return self.store_light_data()
 
     def set_light(self, state: str):
         if not self.tokens.get_access_token():
-            return "Light cannot be turned on. Please generate the tokens.", 403
+            return f"Light cannot be turned {state}. Please generate the tokens.", 403
         assert state != self.state
         raw = '{"on": true}' if state == "on" else '{"on": false}'
         self.HEADERS['Authorization'] = f"Bearer {self.tokens.get_access_token()}"
-        requests.put(
+        response = requests.put(
             f"{PHUE.LIGHTS_URL.value}/{self.id}/state",
             headers=self.HEADERS,
             data=raw
         )
+        if response.status_code >= 400:
+            return "API call to turn modify the light state has failed.", 409
         self.state = state
         return self.set_light_on(datetime.now()) if self.state == "on" else\
             self.set_light_off(datetime.now())

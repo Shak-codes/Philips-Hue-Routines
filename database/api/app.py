@@ -1,11 +1,10 @@
 from flask import Flask, request
 import json
 from datetime import datetime
-import sqlite3
 import requests
 from lights import light
 
-from constants import DB_URL, Tables, Params, SQL, PHUE
+from constants import Tables, Params, PHUE
 from sqlite import sqlite
 
 
@@ -63,33 +62,23 @@ def create_table():
 @app.route("/lights/<id>/power-on", methods=['POST'])
 def power_on(id):
     light = Light1 if int(id) == 1 else Light2
-    response, code = light.set_light("on")
-    if code == 403:
-        return response, code
-    response = f"Success! Lamp {id} turned on at {light.turn_on_time} with brightness {light.brightness} and xy: {light.x}, {light.y}"
-    return response, 200
+    return light.set_light("on")
 
 
 @app.route("/lights/<id>/power-off", methods=['POST'])
 def power_off(id):
     assert id == request.view_args[Params.ID.value]
     light = Light1 if int(id) == 1 else Light2
-    response, code = light.set_light("off")
-    if code == 403:
-        return response, code
-    time_active = (light.turn_off_info - light.turn_on_info).total_seconds()
-    message = f'''Success! The lamp was turned on at {light.turn_on_time} and turned off at {light.turn_off_time}.
-    The lamp was on for {round(divmod(time_active, 60)[0])} minutes and {round(divmod(time_active, 60)[1])} seconds.'''
-    return message, 201
+    return light.set_light("off")
 
 
 @app.route("/db/<table>", methods=['GET'])
 def get_dblight_data(table):
     assert table == request.view_args['table']
     c = sqlite.SQLite()
-    response = c.get_all(table)
+    response, code = c.get_all(table)
     c.close_conn()
-    return response, 200
+    return response, code
 
 
 @app.route("/lights/state", methods=["GET"])
