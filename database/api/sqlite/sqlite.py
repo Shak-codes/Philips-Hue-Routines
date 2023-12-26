@@ -1,5 +1,5 @@
 import sqlite3
-from constants import SQL
+from ..constants import SQL
 
 
 def insert_statement(table, values):
@@ -8,8 +8,9 @@ def insert_statement(table, values):
 
 
 class SQLite:
+    db = "../smarthome.db"
+
     def __init__(self):
-        self.db = "../smarthome.db"
         self.conn = None
 
     def __enter__(self):
@@ -55,7 +56,7 @@ class SQLite:
         self._check_conn()
         query = f"{SQL.DELETE.value} {name}"
         result, status = self._execute_query(query)
-        return result or f"Success! Table '{name}' data has been deleted.", status
+        return result or f"Success! Table {name}'s data has been deleted.", status
 
     def _select(self, name, fetch_method):
         self._check_conn()
