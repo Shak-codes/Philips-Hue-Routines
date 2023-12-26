@@ -13,9 +13,10 @@ class Light:
 
     def __init__(self, id: int):
         self.id = id
-        if self.tokens.get_access_token():
+        if self.tokens.get_access_token()[1] == 200:
             HEADERS = {
                 "Authorization": f"Bearer {self.tokens.get_access_token()}"}
+            print("HEADERS")
             print(self.HEADERS)
             response = requests.get(
                 f"{PHUE.LIGHTS_URL.value}/{id}", headers=HEADERS)

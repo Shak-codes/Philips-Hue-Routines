@@ -68,3 +68,13 @@ class SQLite:
             return f"Table '{name}' does not exist. Cannot get data.", 409
         else:
             return f"{c.fetchall()}", 200
+
+    def get_one(self, name) -> (str, int):
+        self.check_conn()
+        c = self.conn.cursor()
+        try:
+            c.execute(f"{SQL.SELECT_ALL.value} {name}")
+        except:
+            return f"Table '{name}' does not exist. Cannot get data.", 409
+        else:
+            return f"{c.fetchone()}", 200
