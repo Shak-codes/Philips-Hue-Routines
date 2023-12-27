@@ -1,8 +1,25 @@
 from enum import Enum
 from requests.auth import HTTPBasicAuth
-# from credentials import CLIENT_ID, CLIENT_SECRET, USERNAME
+from .credentials import CLIENT_ID, CLIENT_SECRET, USERNAME
 
 # Enums
+
+
+class TABLE_COLUMNS(Enum):
+    LIGHTS = """id INTEGER,
+                name TEXT,
+                turn_on_date TEXT,
+                turn_on_dow TEXT,
+                turn_on_time TEXT,
+                turn_off_date TEXT,
+                turn_off_dow TEXT,
+                turn_off_time TEXT,
+                brightness INTEGER,
+                x REAL,
+                y REAL"""
+    TOKENS = """generated_at TEXT,
+                access_token TEXT,
+                refresh_token TEXT"""
 
 
 class Tables(Enum):
@@ -29,13 +46,13 @@ class Params(Enum):
 
 
 # Philips Hue
-# class PHUE(Enum):
-#     AUTH = HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
-#     REFRESH_ACCESS_TOKEN_AUTH = {
-#         "Content-Type": "application/x-www-form-urlencoded"
-#     }
-#     REFRESH_ACCESS_TOKEN_URL = "https://api.meethue.com/oauth2/refresh?grant_type=refresh_token"
-#     LIGHTS_URL = f"https://api.meethue.com/bridge/{USERNAME}/lights"
+class PHUE(Enum):
+    AUTH = HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
+    REFRESH_ACCESS_TOKEN_AUTH = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    REFRESH_ACCESS_TOKEN_URL = "https://api.meethue.com/oauth2/refresh?grant_type=refresh_token"
+    LIGHTS_URL = f"https://api.meethue.com/bridge/{USERNAME}/lights"
 
 
 # Database

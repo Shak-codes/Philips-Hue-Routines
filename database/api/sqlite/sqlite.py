@@ -26,6 +26,7 @@ class SQLite:
 
     def _close_conn(self):
         if self.conn is not None:
+            self.conn.commit()
             self.conn.close()
 
     def _execute_query(self, success_message, query, parameters=None):
