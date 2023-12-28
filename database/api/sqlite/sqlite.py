@@ -8,9 +8,9 @@ def insert_statement(table, values):
 
 
 class SQLite:
-    db = "../smarthome.db"
 
-    def __init__(self):
+    def __init__(self, db="../smarthome.db"):
+        self.db = db
         self.conn = None
 
     def __enter__(self):
@@ -66,7 +66,7 @@ class SQLite:
                 result = fetch_method(cursor)
             except sqlite3.Error:
                 return f"Table '{name}' does not exist. Cannot get data.", 409
-            return f"{result}", 200
+            return result, 200
 
     def get_all(self, name):
         return self._select(name, lambda cursor: cursor.fetchall())
