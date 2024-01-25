@@ -94,3 +94,13 @@ def test_delete_all_failure_nonexistant_table(sqlite_instance):
         "test_table2")
     assert status_code == 409
     assert "no such table" in result.lower()
+
+
+def test_table_exists_true(sqlite_instance):
+    assert sqlite_instance.table_exists(
+        "test_table") == True
+
+
+def test_table_exists_false(sqlite_instance):
+    assert sqlite_instance.table_exists(
+        "test_table2") == False
