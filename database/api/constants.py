@@ -1,6 +1,6 @@
 from enum import Enum
 from requests.auth import HTTPBasicAuth
-from credentials import CLIENT_ID, CLIENT_SECRET, USERNAME
+# from credentials import CLIENT_ID, CLIENT_SECRET, USERNAME
 
 # Enums
 
@@ -29,13 +29,13 @@ class Params(Enum):
 
 
 # Philips Hue
-class PHUE(Enum):
-    AUTH = HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
-    REFRESH_ACCESS_TOKEN_AUTH = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    REFRESH_ACCESS_TOKEN_URL = "https://api.meethue.com/oauth2/refresh?grant_type=refresh_token"
-    LIGHTS_URL = f"https://api.meethue.com/bridge/{USERNAME}/lights"
+# class PHUE(Enum):
+#     AUTH = HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
+#     REFRESH_ACCESS_TOKEN_AUTH = {
+#         "Content-Type": "application/x-www-form-urlencoded"
+#     }
+#     REFRESH_ACCESS_TOKEN_URL = "https://api.meethue.com/oauth2/refresh?grant_type=refresh_token"
+#     LIGHTS_URL = f"https://api.meethue.com/bridge/{USERNAME}/lights"
 
 
 # Database
