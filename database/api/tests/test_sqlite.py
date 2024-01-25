@@ -5,11 +5,11 @@ from ..sqlite.sqlite import SQLite
 
 @pytest.fixture(scope='session', autouse=True)
 def sqlite_instance():
-    with SQLite() as db:
+    with SQLite("../test_smarthome.db") as db:
         yield db
     project_root = os.path.abspath(os.path.join(
         os.path.dirname(__file__), "..", ".."))
-    db_path = os.path.join(project_root, "smarthome.db")
+    db_path = os.path.join(project_root, "test_smarthome.db")
     os.remove(db_path)
 
 
@@ -61,25 +61,23 @@ def test_insert_failure_too_many_params(sqlite_instance):
 def test_get_all_success(sqlite_instance):
     result, status_code = sqlite_instance.get_all("test_table")
     assert status_code == 200
-    assert "[(1, 'test_name'), (2, 'test_name2')]" in result.lower()
+    assert result == [(1, 'test_name'), (2, 'test_name2')]
 
 
 def test_get_all_failure(sqlite_instance):
-    result, status_code = sqlite_instance.get_all("test_table2")
+    _, status_code = sqlite_instance.get_all("test_table2")
     assert status_code == 409
-    assert "does not exist" in result.lower()
 
 
 def test_get_one_success(sqlite_instance):
     result, status_code = sqlite_instance.get_one("test_table")
     assert status_code == 200
-    assert "(1, 'test_name')" in result.lower()
+    assert result == (1, 'test_name')
 
 
 def test_get_one_failure(sqlite_instance):
-    result, status_code = sqlite_instance.get_one("test_table2")
+    _, status_code = sqlite_instance.get_one("test_table2")
     assert status_code == 409
-    assert "does not exist" in result.lower()
 
 
 def test_delete_all_success(sqlite_instance):

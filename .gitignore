@@ -1,4 +1,6 @@
-database/api/__pycache__
-database/api/.venv
-database/smarthome.db
-database/*/credentials.py
+*.venv
+*.db
+credentials.py
+__pycache__/
+*.pyc
+.pytest_cache/

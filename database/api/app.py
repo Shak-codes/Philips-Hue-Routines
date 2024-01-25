@@ -43,5 +43,6 @@ def generate_refresh_token():
             Tables.TOKENS.value, (generated_at, access_token, refresh_token))
         if code == 409:
             return response, 409
+        print(db.get_one("TOKENS"))
 
-    return jsonify(tokens), 201
+    return jsonify(generated_at, access_token, refresh_token), 201
