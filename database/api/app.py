@@ -5,9 +5,12 @@ import requests
 
 from .constants import Tables, Params, PHUE, TABLE_COLUMNS
 from .sqlite.sqlite import SQLite
+from .heater.heater import Heater
 
 
 app = Flask(__name__)
+
+heater = None
 
 
 def startup():
@@ -17,6 +20,11 @@ def startup():
                             TABLE_COLUMNS.LIGHTS.value)
             db.create_table(Tables.TOKENS.value,
                             TABLE_COLUMNS.TOKENS.value)
+            db.create_table(Tables.HEATER.value,
+                            TABLE_COLUMNS.HEATER.value)
+
+    global heater
+    heater = Heater()
 
 
 startup()
@@ -46,3 +54,16 @@ def generate_refresh_token():
         print(db.get_one("TOKENS"))
 
     return jsonify(generated_at, access_token, refresh_token), 201
+
+
+@app.route("/heater", methods=["POST"])
+def control_heater():
+    params = request.get_json()
+    name = params['name']
+    state = params['value']
+    return jsonify(heater.manage(name, state))
+
+
+@app.route("/heater", methods=["GET"])
+def get_heater_data():
+    return jsonify(heater.get_heater_data())

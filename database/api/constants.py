@@ -20,6 +20,14 @@ class TABLE_COLUMNS(Enum):
     TOKENS = """generated_at TEXT,
                 access_token TEXT,
                 refresh_token TEXT"""
+    HEATER = """turn_on_date TEXT,
+                turn_on_dow TEXT,
+                turn_on_time TEXT,
+                turn_off_date TEXT,
+                turn_off_dow TEXT,
+                turn_off_time TEXT,
+                state TEXT"""
+    HEATER_STATE = """last_known_state TEXT"""
 
 
 class Tables(Enum):
@@ -27,6 +35,7 @@ class Tables(Enum):
     LAMP = "LAMPS"
     LIGHT = "LIGHTS"
     HEATER = "HEATER"
+    HEATER_STATE = "HEATER_STATE"
     COLUMN_TYPES = ["integer", "text", "real"]
 
 
@@ -54,6 +63,9 @@ class PHUE(Enum):
     REFRESH_ACCESS_TOKEN_URL = "https://api.meethue.com/oauth2/refresh?grant_type=refresh_token"
     LIGHTS_URL = f"https://api.meethue.com/bridge/{USERNAME}/lights"
 
+
+GOVEE_API = "https://developer-api.govee.com/v1"
+HEATER_MODEL = "H7131"
 
 # Database
 DB_URL = "../smarthome.db"
